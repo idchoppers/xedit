@@ -19,10 +19,12 @@ v2 3/29/2022:
 - The status and message bar code will remain in the source file, just commented out, (this is not bloat because compiler ignores comments ^_^) so if you want
   to re-implement them then by all means go ahead.
 
-v3 3/29/2022 - :
+v3 3/29/2022 - 3/31/2022:
 - Implemented C-style syntax highlighting and file detection for C/C++-related files.
 
 - Implemented highlighting for nonprintable characters.
+
+- Removed all code related to StatusBar and MsgBar it will still be in v2.
 */
 
 /* includes */
@@ -48,6 +50,7 @@ v3 3/29/2022 - :
 #define XEDIT_TAB_STOP 8
 #define XEDIT_QUIT_TIMES 0
 
+// ANSI color values
 #define NUM_COLOR 31
 #define STR_COLOR 35
 #define KEYW_COLOR 33
@@ -115,8 +118,6 @@ struct xeditConfig {
 	erow *row;
 	int dirty;
 	char *filename;
-	//char statusmsg[80];
-	//time_t statusmsg_time;
 	struct xeditSyntax *syntax;
 	struct termios orig_termios;
 };
@@ -144,7 +145,6 @@ struct xeditSyntax HLDB[] = {
 #define HLDB_ENTRIES (sizeof(HLDB) / sizeof(HLDB[0]))
 
 /* prototypes */
-//void XeditSetStatusMessage(const char *fmt, ...);
 void XeditRefreshScreen();
 
 /* term */
@@ -613,7 +613,6 @@ void XeditSave() {
 				close(fd);
 				free(buf);
 				E.dirty = 0;
-				//XeditSetStatusMessage("%d bytes transacted", len);
 				return;
 			}
 		}
@@ -621,7 +620,6 @@ void XeditSave() {
 	}
 
 	free(buf);
-	//XeditSetStatusMessage("Can't save! I/O error: %s", strerror(errno));
 }
 
 /* append buffer */
@@ -729,35 +727,7 @@ void XeditDrawRows(struct abuf *ab) {
 		}
 	}
 }
-/*
-void XeditDrawStatusBar(struct abuf *ab) {
-	abAppend(ab, "\x1b[7m", 4);
-	char status[80], rstatus[80];
-	int len = snprintf(status, sizeof(status), "%.20s - %d lines %s", E.filename ? E.filename : "[UNNAMED]", E.numrows, E.dirty ? "(ALTERED)" : "");
-	int rlen = snprintf(rstatus, sizeof(rstatus), "%d/%d", E.cy + 1, E.numrows);
-	if (len > E.screencols) len = E.screencols;
-	abAppend(ab, status, len);
-	while (len < E.screencols) {
-		if (E.screencols - len == rlen) {
-			abAppend(ab, rstatus, rlen);
-			break;
-		} else {
-			abAppend(ab, "", 1);
-			len++;
-		}
-	}
-	abAppend(ab, "\x1b[m)", 3);
-	abAppend(ab, "\r\n", 2);
-}
-*//*
-void XeditDrawMessageBox(struct abuf *ab) {
-	abAppend(ab, "\x1b[H", 3);
-	int msglen = strlen(E.statusmsg);
-	if (msglen > E.screencols) msglen = E.screencols;
-	if (msglen && time(NULL) - E.statusmsg_time < 1)
-		abAppend(ab, E.statusmsg, msglen);
-}
-*/
+
 void XeditRefreshScreen() {
 	XeditScroll();
 
@@ -767,8 +737,6 @@ void XeditRefreshScreen() {
 	abAppend(&ab, "\x1b[H", 3);
 
 	XeditDrawRows(&ab);
-	//XeditDrawStatusBar(&ab);
-	//XeditDrawMessageBox(&ab);
 
 	char buf[32];
 	snprintf(buf, sizeof(buf), "\x1b[%d;%dH", (E.cy - E.rowoff) + 1, (E.rx - E.coloff) + 1);
@@ -779,15 +747,7 @@ void XeditRefreshScreen() {
 	write(STDOUT_FILENO, ab.b, ab.len);
 	abFree(&ab);
 }
-/*
-void XeditSetStatusMessage(const char *fmt, ...) {
-	va_list ap;
-	va_start(ap, fmt);
-	vsnprintf(E.statusmsg, sizeof(E.statusmsg), fmt, ap);
-	va_end(ap);
-	E.statusmsg_time = time(NULL);
-}
-*/
+
 /* input */
 void XeditMoveCursor(int key) {
 	erow *row = (E.cy >= E.numrows) ? NULL : &E.row[E.cy];
@@ -840,7 +800,6 @@ void XeditProcessKeypress() {
 
 		case CTRL_KEY('q'):
 			if (E.dirty && quit_times > 0) {
-				//XeditSetStatusMessage("Unsaved changes found. Press CTRL-Q %d more times to quit.", quit_times);
 				quit_times--;
 				return;
 			}
@@ -914,12 +873,9 @@ void InitXedit() {
 	E.row = NULL;
 	E.dirty = 0;
 	E.filename = NULL;
-	//E.statusmsg[0] = '\0';
-	//E.statusmsg_time = 0;
 	E.syntax = NULL;
 
 	if (GetWindowSize(&E.screenrows, &E.screencols) == -1) Die("GetWindowSize");
-	//E.screenrows -= 2;
 }
 
 int main(int argc, char *argv[]) {
@@ -928,8 +884,6 @@ int main(int argc, char *argv[]) {
 	if (argc >= 2) {
 		XeditOpen(argv[1]);
 	}
-
-	//XeditSetStatusMessage("~XEDIT UNLICENSED COPY, 30 DAY TRIAL ACTIVATED~");
 
 	while (1) {
 		XeditRefreshScreen();
