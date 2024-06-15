@@ -1,7 +1,7 @@
 /*
 XEDIT by idchoppers
 
-Copyright 2024 Kyle Smith
+Copyright 2022 Kyle Smith
 Licensed under GPL-3.0-or-later
 
 Dev notes: 
