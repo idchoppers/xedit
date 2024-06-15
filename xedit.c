@@ -1,6 +1,9 @@
 /*
 XEDIT by idchoppers
 
+Copyright 2024 Kyle Smith
+Licensed under GPL-3.0-or-later
+
 Dev notes: 
 I found a guide on building a text editor called "kilo" by antirez, it is a cool editor that is, as the name implies, pretty small.
 So I decided to try it out and make an editor that I would use on a daily basis.
